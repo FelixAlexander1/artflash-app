@@ -5,8 +5,8 @@ import { QuizMode } from './components/QuizMode';
 import { GalleryMode } from './components/GalleryMode';
 import { CuratorMode } from './components/CuratorMode';
 
-// Usamos 127.0.0.1 para mantener coherencia con el login del Navbar
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3001/api/artworks';
+// Usamos la variable de entorno de Vercel y mantenemos una URL relativa segura como respaldo
+const API_URL = import.meta.env.VITE_API_URL || 'https://artflash-backend.onrender.com/api/artworks';
 
 export default function App() {
   const [artworks, setArtworks] = useState([]);
@@ -32,7 +32,7 @@ export default function App() {
     }
   }, []);
 
-  // 2. Cargar obras desde la API con control estricto del estado de carga
+  // 2. Cargar obras desde la API normalizando la propiedad imageUrl
   useEffect(() => {
     fetch(API_URL)
       .then((res) => {
@@ -40,13 +40,18 @@ export default function App() {
         return res.json();
       })
       .then((data) => {
-        setArtworks(data);
+        // 🔑 NORMALIZACIÓN: Aseguramos que la imagen se lea aunque PostgreSQL la devuelva como 'imageurl'
+        const normalizedData = data.map((art) => ({
+          ...art,
+          imageUrl: art.imageUrl || art.imageurl
+        }));
+        setArtworks(normalizedData);
       })
       .catch((err) => {
         console.error('Error cargando obras:', err);
       })
       .finally(() => {
-        setLoading(false); // Garantiza que la pantalla "Cargando" desaparezca
+        setLoading(false);
       });
   }, []);
 
@@ -70,16 +75,9 @@ export default function App() {
   // Agregar obra (POST)
   const handleAddArtwork = async (newArtwork) => {
     try {
-      // 1. Obtener el token guardado durante el login
-      const token = localStorage.getItem('token'); 
-
-      // 2. Realizar la petición POST con el encabezado de autorización
-      const response = await fetch(import.meta.env.VITE_API_URL, {
+      const response = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // 👈 Encabezado imprescindible
-        },
+        headers: getAuthHeaders(), // 👈 Reutilizamos el helper de autenticación
         body: JSON.stringify(newArtwork)
       });
 
@@ -92,8 +90,13 @@ export default function App() {
 
       const savedArtwork = await response.json();
       
-      // 3. Actualizar el estado local con la nueva obra devuelta por el backend
-      setArtworks((prev) => [...prev, savedArtwork]);
+      // Normalizamos la obra guardada antes de añadirla al estado local
+      const normalizedArtwork = {
+        ...savedArtwork,
+        imageUrl: savedArtwork.imageUrl || savedArtwork.imageurl
+      };
+
+      setArtworks((prev) => [normalizedArtwork, ...prev]);
 
     } catch (error) {
       console.error('Error:', error);

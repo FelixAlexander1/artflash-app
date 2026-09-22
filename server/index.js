@@ -69,6 +69,7 @@ app.post('/api/login', (req, res) => {
 
 // --- 4. RUTAS DE ARTWORKS ---
 // GET: Obtener todas las obras (Corregido con alias AS "imageUrl")
+// GET: Obtener todas las obras
 app.get('/api/artworks', async (req, res) => {
   try {
     const query = `
@@ -79,6 +80,7 @@ app.get('/api/artworks', async (req, res) => {
     const result = await db.query(query);
     res.json(result.rows);
   } catch (error) {
+    console.error('Error al obtener obras:', error);
     res.status(500).json({ error: 'Error al obtener las obras' });
   }
 });
