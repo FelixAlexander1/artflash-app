@@ -144,8 +144,11 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-amber-400 font-bold">
-        Cargando obras de arte desde el servidor...
+      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center text-amber-400 font-bold space-y-4">
+        <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs text-neutral-400 text-center px-4">
+          Despertando el servidor del museo (esto puede tomar unos segundos)...
+        </p>
       </div>
     );
   }
