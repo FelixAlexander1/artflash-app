@@ -70,20 +70,33 @@ export default function App() {
   // Agregar obra (POST)
   const handleAddArtwork = async (newArtwork) => {
     try {
-      const res = await fetch(API_URL, {
+      // 1. Obtener el token guardado durante el login
+      const token = localStorage.getItem('token'); 
+
+      // 2. Realizar la petición POST con el encabezado de autorización
+      const response = await fetch(import.meta.env.VITE_API_URL, {
         method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newArtwork),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // 👈 Encabezado imprescindible
+        },
+        body: JSON.stringify(newArtwork)
       });
 
-      if (res.ok) {
-        const savedArtwork = await res.json();
-        setArtworks((prev) => [savedArtwork, ...prev]);
-      } else {
-        alert('No tienes autorización para añadir obras');
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          alert('Sesión expirada o no autorizada. Por favor, vuelve a iniciar sesión.');
+        }
+        throw new Error('Error al guardar la obra');
       }
-    } catch (err) {
-      console.error('Error al guardar en el servidor:', err);
+
+      const savedArtwork = await response.json();
+      
+      // 3. Actualizar el estado local con la nueva obra devuelta por el backend
+      setArtworks((prev) => [...prev, savedArtwork]);
+
+    } catch (error) {
+      console.error('Error:', error);
     }
   };
 
