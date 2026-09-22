@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, RotateCw, MapPin, Calendar, BookOpen, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCw, MapPin, Calendar, BookOpen, Sparkles, Landmark, Glasses } from 'lucide-react';
 
 export function FlashcardMode({ artworks }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -19,10 +19,8 @@ export function FlashcardMode({ artworks }) {
 
   if (!currentArtwork) return null;
 
-  // Placeholder SVG base64 (nunca falla)
   const FALLBACK_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="100%" height="100%" fill="%23171717"/><text x="50%" y="50%" fill="%23f59e0b" font-family="sans-serif" font-size="20" text-anchor="middle">Obra de Arte</text></svg>';
 
-  // Detección flexible de la imagen y descripción
   const imageSrc = currentArtwork.imageUrl || currentArtwork.image || FALLBACK_IMAGE;
   const cardNotes = currentArtwork.notes || currentArtwork.description || 'Sin información adicional.';
 
@@ -45,7 +43,7 @@ export function FlashcardMode({ artworks }) {
 
         <div
           onClick={() => setIsFlipped(!isFlipped)}
-          className="cursor-pointer relative h-[450px] w-full rounded-3xl transition-all duration-300 shadow-2xl overflow-hidden border border-neutral-800 bg-neutral-900"
+          className="cursor-pointer relative h-[540px] w-full rounded-3xl transition-all duration-300 shadow-2xl overflow-hidden border border-neutral-800 bg-neutral-900 flex flex-col"
         >
           {!isFlipped ? (
             /* --- CARA FRONTAL --- */
@@ -74,10 +72,10 @@ export function FlashcardMode({ artworks }) {
               </div>
             </div>
           ) : (
-            /* --- CARA TRASERA --- */
-            <div className="h-full w-full p-6 bg-neutral-900/95 backdrop-blur-xl text-neutral-100 flex flex-col justify-between border border-amber-500/30">
-              <div>
-                <div className="flex justify-between items-start mb-4 border-b border-neutral-800 pb-3">
+            /* --- CARA TRASERA (Ficha técnica completa) --- */
+            <div className="h-full w-full p-5 sm:p-6 bg-neutral-900/95 backdrop-blur-xl text-neutral-100 flex flex-col justify-between border border-amber-500/30 overflow-y-auto">
+              <div className="space-y-4">
+                <div className="flex justify-between items-start border-b border-neutral-800 pb-3">
                   <div>
                     <span className="text-[10px] text-amber-400 font-extrabold tracking-widest uppercase">
                       Ficha Técnica de Examen
@@ -85,43 +83,72 @@ export function FlashcardMode({ artworks }) {
                     <h3 className="text-xl font-bold text-white mt-0.5">{currentArtwork.title}</h3>
                     <p className="text-neutral-400 text-xs font-medium">{currentArtwork.artist}</p>
                   </div>
-                  <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
+                  <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20 shrink-0">
                     <RotateCw size={16} />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 my-4">
-                  <div className="bg-neutral-950/60 p-3 rounded-2xl border border-neutral-800 flex items-center space-x-2.5">
-                    <Calendar size={16} className="text-amber-400 shrink-0" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-neutral-950/60 p-2.5 rounded-2xl border border-neutral-800 flex items-center space-x-2">
+                    <Calendar size={15} className="text-amber-400 shrink-0" />
                     <div>
                       <span className="text-[10px] text-neutral-500 block">Año</span>
                       <span className="text-xs font-semibold text-neutral-200">{currentArtwork.year || 'N/A'}</span>
                     </div>
                   </div>
 
-                  <div className="bg-neutral-950/60 p-3 rounded-2xl border border-neutral-800 flex items-center space-x-2.5">
-                    <MapPin size={16} className="text-amber-400 shrink-0" />
+                  <div className="bg-neutral-950/60 p-2.5 rounded-2xl border border-neutral-800 flex items-center space-x-2">
+                    <MapPin size={15} className="text-amber-400 shrink-0" />
                     <div>
                       <span className="text-[10px] text-neutral-500 block">Ubicación</span>
-                      <span className="text-xs font-semibold text-neutral-200 truncate block max-w-[120px]">
+                      <span className="text-xs font-semibold text-neutral-200 truncate block max-w-[110px]">
                         {currentArtwork.location || 'N/A'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-neutral-950/80 p-4 rounded-2xl border border-neutral-800">
-                  <div className="flex items-center space-x-2 text-xs font-bold text-amber-400 mb-2">
-                    <BookOpen size={14} />
-                    <span>Claves de Análisis</span>
+                {/* Bloque de nuevos campos académicos */}
+                <div className="space-y-2.5 text-xs text-neutral-300">
+                  {currentArtwork.chronology && (
+                    <div className="bg-neutral-950/80 p-2.5 rounded-xl border border-neutral-800">
+                      <span className="text-amber-400 font-bold block text-[11px] mb-0.5">Cronología / Siglo:</span>
+                      <p className="text-neutral-300">{currentArtwork.chronology}</p>
+                    </div>
+                  )}
+
+                  {currentArtwork.period && (
+                    <div className="bg-neutral-950/80 p-2.5 rounded-xl border border-neutral-800">
+                      <span className="text-amber-400 font-bold block text-[11px] mb-0.5">Período / Escuela:</span>
+                      <p className="text-neutral-300">{currentArtwork.period}</p>
+                    </div>
+                  )}
+
+                  {currentArtwork.context && (
+                    <div className="bg-neutral-950/80 p-2.5 rounded-xl border border-neutral-800">
+                      <span className="text-amber-400 font-bold block text-[11px] mb-0.5"><Landmark size={12} className="inline mr-1" />Contexto Histórico:</span>
+                      <p className="text-neutral-400 leading-relaxed">{currentArtwork.context}</p>
+                    </div>
+                  )}
+
+                  {currentArtwork.analysis && (
+                    <div className="bg-neutral-950/80 p-2.5 rounded-xl border border-neutral-800">
+                      <span className="text-amber-400 font-bold block text-[11px] mb-0.5"><Glasses size={12} className="inline mr-1" />Análisis Formal:</span>
+                      <p className="text-neutral-400 leading-relaxed">{currentArtwork.analysis}</p>
+                    </div>
+                  )}
+
+                  <div className="bg-neutral-950/80 p-2.5 rounded-xl border border-neutral-800">
+                    <div className="flex items-center space-x-1 text-[11px] font-bold text-amber-400 mb-0.5">
+                      <BookOpen size={12} />
+                      <span>Claves Rápidas</span>
+                    </div>
+                    <p className="text-neutral-300">{cardNotes}</p>
                   </div>
-                  <p className="text-xs leading-relaxed text-neutral-300 max-h-28 overflow-y-auto pr-1">
-                    {cardNotes}
-                  </p>
                 </div>
               </div>
 
-              <div className="text-center text-[11px] text-neutral-500 font-medium">
+              <div className="text-center text-[11px] text-neutral-500 font-medium pt-3 mt-2 border-t border-neutral-800">
                 Haz clic de nuevo para ver la imagen
               </div>
             </div>
@@ -130,7 +157,7 @@ export function FlashcardMode({ artworks }) {
       </div>
 
       {/* Botones de Navegación */}
-      <div className="flex items-center justify-between mt-8">
+      <div className="flex items-center justify-between mt-6">
         <button
           onClick={handlePrev}
           className="p-3.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 rounded-2xl text-white transition-all active:scale-95 shadow-lg"

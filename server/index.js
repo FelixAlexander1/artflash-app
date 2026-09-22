@@ -8,7 +8,6 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET;
 
-
 app.use(cors());
 app.use(express.json());
 
@@ -47,7 +46,6 @@ const verifyTeacher = (req, res, next) => {
 // --- 3. ENDPOINT DE LOGIN ---
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
-
   const user = USERS.find((u) => u.email === email && u.password === password);
 
   if (user) {
@@ -68,73 +66,54 @@ app.post('/api/login', (req, res) => {
 });
 
 // --- 4. RUTAS DE ARTWORKS ---
-// GET: Obtener todas las obras (Corregido con alias AS "imageUrl")
-// GET: Obtener todas las obras
+
+// GET: Obtener todas las obras con campos académicos
 app.get('/api/artworks', async (req, res) => {
   try {
-    const query = `
-      SELECT id, title, artist, year, style, location, imageurl AS "imageUrl", notes 
+    const result = await db.query(`
+      SELECT id, title, artist, year, style, location, 
+             imageurl AS "imageUrl", notes,
+             chronology, context, analysis, period
       FROM artworks 
       ORDER BY id DESC
-    `;
-    const result = await db.query(query);
+    `);
     res.json(result.rows);
-  } catch (error) {
-    console.error('Error al obtener obras:', error);
-    res.status(500).json({ error: 'Error al obtener las obras' });
+  } catch (err) {
+    console.error('Error al obtener obras:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// POST: Agregar una nueva obra (Protegida)
-app.post('/api/artworks', verifyTeacher, async (req, res) => {
-  const { title, artist, year, style, location, imageUrl, notes } = req.body;
-
-  if (!title || !artist || !imageUrl) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios' });
-  }
-
-  const id = Date.now().toString();
-
+// POST: Crear una nueva obra
+app.post('/api/artworks', async (req, res) => {
+  const { title, artist, year, style, location, imageUrl, notes, chronology, context, analysis, period } = req.body;
   try {
-    const query = `
-      INSERT INTO artworks (id, title, artist, year, style, location, imageurl, notes)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, title, artist, year, style, location, imageurl AS "imageUrl", notes;
-    `;
-    const values = [id, title, artist, year, style, location, imageUrl, notes];
-    const result = await db.query(query, values);
-
+    const result = await db.query(
+      `INSERT INTO artworks (title, artist, year, style, location, imageurl, notes, chronology, context, analysis, period)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *, imageurl AS "imageUrl"`,
+      [title, artist, year, style, location, imageUrl, notes, chronology, context, analysis, period]
+    );
     res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error('Error al guardar obra:', error);
+  } catch (err) {
+    console.error('Error al crear obra:', err);
     res.status(500).json({ error: 'Error al guardar la obra' });
   }
 });
 
-// PUT: Actualizar una obra por ID (Protegida)
-app.put('/api/artworks/:id', verifyTeacher, async (req, res) => {
+// PUT: Actualizar una obra existente
+app.put('/api/artworks/:id', async (req, res) => {
   const { id } = req.params;
-  // Extraemos imageUrl o imageurl por si se envía con diferente nombre desde el cliente:
-  const { title, artist, year, style, location, notes } = req.body;
-  const imageUrl = req.body.imageUrl || req.body.imageurl;
-
+  const { title, artist, year, style, location, imageUrl, notes, chronology, context, analysis, period } = req.body;
   try {
-    const query = `
-      UPDATE artworks 
-      SET title = $1, artist = $2, year = $3, style = $4, location = $5, imageurl = $6, notes = $7
-      WHERE id = $8
-      RETURNING id, title, artist, year, style, location, imageurl AS "imageUrl", notes;
-    `;
-    const values = [title, artist, year, style, location, imageUrl, notes, id];
-    const result = await db.query(query, values);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Obra no encontrada' });
-    }
-
+    const result = await db.query(
+      `UPDATE artworks 
+       SET title=$1, artist=$2, year=$3, style=$4, location=$5, imageurl=$6, notes=$7, chronology=$8, context=$9, analysis=$10, period=$11
+       WHERE id=$12 RETURNING *, imageurl AS "imageUrl"`,
+      [title, artist, year, style, location, imageUrl, notes, chronology, context, analysis, period, id]
+    );
     res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Error al actualizar obra:', error);
+  } catch (err) {
+    console.error('Error al actualizar obra:', err);
     res.status(500).json({ error: 'Error al actualizar la obra' });
   }
 });
@@ -142,7 +121,6 @@ app.put('/api/artworks/:id', verifyTeacher, async (req, res) => {
 // DELETE: Eliminar una obra por ID (Protegida)
 app.delete('/api/artworks/:id', verifyTeacher, async (req, res) => {
   const { id } = req.params;
-
   try {
     const result = await db.query('DELETE FROM artworks WHERE id = $1', [id]);
 
@@ -157,6 +135,7 @@ app.delete('/api/artworks/:id', verifyTeacher, async (req, res) => {
   }
 });
 
+// GET: Buscar obras en la API pública del MET Museum
 // GET: Buscar obras en la API pública del MET Museum
 app.get('/api/external/search', async (req, res) => {
   const { q } = req.query;
@@ -188,7 +167,12 @@ app.get('/api/external/search', async (req, res) => {
         style: item.department || 'Arte Clásico',
         location: item.repository || 'The Met, Nueva York',
         imageUrl: item.primaryImageSmall || item.primaryImage,
-        notes: `Obra perteneciente al departamento de ${item.department}. Período: ${item.period || 'No especificado'}.`,
+        notes: `Obra perteneciente al departamento de ${item.department}.`,
+        // CAMPOS NUEVOS AÑADIDOS PARA EVITAR EL ERROR:
+        chronology: item.objectDate || '',
+        period: item.period || '',
+        context: item.culture ? `Cultura / Contexto: ${item.culture}` : 'Sin contexto especificado.',
+        analysis: item.medium ? `Técnica / Materiales: ${item.medium}` : 'Sin análisis especificado.',
       };
     });
 

@@ -7,7 +7,7 @@ export function QuizMode({ artworks, onClose }) {
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   
-  // 1. Guardamos el historial de IDs de obras ya utilizadas en los test
+  // Guardamos el historial de IDs de obras ya utilizadas en los test
   const [usedArtworkIds, setUsedArtworkIds] = useState([]);
 
   const FALLBACK_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="100%" height="100%" fill="%23171717"/><text x="50%" y="50%" fill="%23f59e0b" font-family="sans-serif" font-size="20" text-anchor="middle">Obra de Arte</text></svg>';
@@ -27,10 +27,8 @@ export function QuizMode({ artworks, onClose }) {
   const generateQuiz = () => {
     if (!artworks || artworks.length < 3) return;
 
-    // 2. Filtramos para usar solo obras que NO hayan sido preguntadas antes
     let availableArtworks = artworks.filter((a) => !usedArtworkIds.includes(a.id));
 
-    // Si ya se hicieron preguntas sobre todas las obras, reiniciamos el historial
     if (availableArtworks.length < 3) {
       availableArtworks = artworks;
       setUsedArtworkIds([]);
@@ -39,13 +37,20 @@ export function QuizMode({ artworks, onClose }) {
     const shuffledAvailable = shuffleArray(availableArtworks);
     const selectedForQuiz = shuffledAvailable.slice(0, 5); // Tomamos máximo 5 obras
 
-    // 3. Registramos los IDs de las obras elegidas en este test
     const newUsedIds = selectedForQuiz.map((a) => a.id);
     setUsedArtworkIds((prev) => [...prev, ...newUsedIds]);
 
     const generatedQuestions = selectedForQuiz.map((artwork) => {
-      const questionTypes = ['artist', 'year', 'style', 'location'];
-      const randomType = questionTypes[Math.floor(Math.random() * questionTypes.length)];
+      // Tipos de preguntas estándar y académicas avanzadas
+      const baseTypes = ['artist', 'year', 'style', 'location'];
+      
+      // Añadimos tipos académicos solo si la obra tiene información en dichos campos
+      if (artwork.chronology) baseTypes.push('chronology');
+      if (artwork.period) baseTypes.push('period');
+      if (artwork.context) baseTypes.push('context');
+      if (artwork.analysis) baseTypes.push('analysis');
+
+      const randomType = baseTypes[Math.floor(Math.random() * baseTypes.length)];
 
       let questionText = '';
       let correctAnswer = '';
@@ -57,16 +62,32 @@ export function QuizMode({ artworks, onClose }) {
         incorrectOptions = artworks.filter((a) => a.artist !== artwork.artist).map((a) => a.artist);
       } else if (randomType === 'year') {
         questionText = `¿En qué año se creó la obra "${artwork.title}" de ${artwork.artist}?`;
-        correctAnswer = artwork.year.toString();
-        incorrectOptions = artworks.filter((a) => a.year !== artwork.year).map((a) => a.year.toString());
+        correctAnswer = artwork.year ? artwork.year.toString() : 'Desconocido';
+        incorrectOptions = artworks.filter((a) => a.year !== artwork.year).map((a) => (a.year ? a.year.toString() : 'Desconocido'));
       } else if (randomType === 'style') {
         questionText = `¿A qué estilo o movimiento artístico pertenece "${artwork.title}"?`;
-        correctAnswer = artwork.style;
-        incorrectOptions = artworks.filter((a) => a.style !== artwork.style).map((a) => a.style);
+        correctAnswer = artwork.style || 'Arte General';
+        incorrectOptions = artworks.filter((a) => a.style !== artwork.style).map((a) => a.style || 'Arte General');
       } else if (randomType === 'location') {
         questionText = `¿Dónde se encuentra actualmente la obra "${artwork.title}"?`;
-        correctAnswer = artwork.location;
-        incorrectOptions = artworks.filter((a) => a.location !== artwork.location).map((a) => a.location);
+        correctAnswer = artwork.location || 'Ubicación desconocida';
+        incorrectOptions = artworks.filter((a) => a.location !== artwork.location).map((a) => a.location || 'Ubicación desconocida');
+      } else if (randomType === 'chronology') {
+        questionText = `¿Cuál es la cronología o siglo asignado a "${artwork.title}"?`;
+        correctAnswer = artwork.chronology;
+        incorrectOptions = artworks.filter((a) => a.chronology && a.chronology !== artwork.chronology).map((a) => a.chronology);
+      } else if (randomType === 'period') {
+        questionText = `¿A qué período o escuela pertenece la obra "${artwork.title}"?`;
+        correctAnswer = artwork.period;
+        incorrectOptions = artworks.filter((a) => a.period && a.period !== artwork.period).map((a) => a.period);
+      } else if (randomType === 'context') {
+        questionText = `¿Qué contexto histórico describe mejor a "${artwork.title}"?`;
+        correctAnswer = artwork.context;
+        incorrectOptions = artworks.filter((a) => a.context && a.context !== artwork.context).map((a) => a.context);
+      } else if (randomType === 'analysis') {
+        questionText = `¿Qué análisis formal o iconográfico corresponde a "${artwork.title}"?`;
+        correctAnswer = artwork.analysis;
+        incorrectOptions = artworks.filter((a) => a.analysis && a.analysis !== artwork.analysis).map((a) => a.analysis);
       }
 
       const uniqueIncorrect = [...new Set(incorrectOptions)];
@@ -79,7 +100,7 @@ export function QuizMode({ artworks, onClose }) {
       const options = shuffleArray([correctAnswer, ...randomIncorrect]);
 
       return {
-        image: artwork.imageUrl,
+        image: artwork.imageUrl || artwork.imageurl,
         question: questionText,
         options: options,
         answer: correctAnswer,
@@ -118,7 +139,7 @@ export function QuizMode({ artworks, onClose }) {
     return (
       <div style={styles.overlay} onClick={onClose}>
         <div style={styles.card} onClick={(e) => e.stopPropagation()}>
-          <p style={{ color: '#fff' }}>Cargando preguntas...</p>
+          <p style={{ color: '#fff' }}>Cargando preguntas académicas...</p>
         </div>
       </div>
     );
@@ -201,10 +222,10 @@ export function QuizMode({ artworks, onClose }) {
             </p>
             <p style={{ color: '#d1d5db', marginBottom: '1.5rem' }}>
               {score === questions.length
-                ? '¡Perfecto! Eres todo un experto en arte.'
+                ? '¡Perfecto! Dominas por completo la teoría y el análisis de las obras.'
                 : score >= 3
-                ? '¡Buen trabajo! Tienes sólidos conocimientos.'
-                : 'Sigue practicando revisando las tarjetas de arte.'}
+                ? '¡Buen trabajo! Tienes sólidos conocimientos académicos.'
+                : 'Sigue practicando repasando las fichas técnicas en el catálogo.'}
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               <button onClick={restartQuiz} style={styles.primaryBtn}>Reintentar</button>

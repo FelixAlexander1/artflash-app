@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Trash2, Edit2, MapPin, Calendar, X, Check } from 'lucide-react';
+import { Search, Trash2, Edit2, MapPin, Calendar, X, Check, Landmark, Glasses } from 'lucide-react';
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80';
 
@@ -21,7 +21,6 @@ export function GalleryMode({ artworks, onDeleteArtwork, onUpdateArtwork }) {
     return matchesSearch && matchesStyle;
   });
 
-  // 🔑 CORRECCIÓN 1: Aseguramos que imageUrl se inicialice leyendo ambas variantes
   const handleStartEdit = (art) => {
     setEditingId(art.id);
     setEditForm({
@@ -108,6 +107,38 @@ export function GalleryMode({ artworks, onDeleteArtwork, onUpdateArtwork }) {
                       placeholder="Estilo"
                     />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={editForm.chronology || ''}
+                      onChange={(e) => setEditForm({ ...editForm, chronology: e.target.value })}
+                      className="p-2 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-300"
+                      placeholder="Cronología"
+                    />
+                    <input
+                      type="text"
+                      value={editForm.period || ''}
+                      onChange={(e) => setEditForm({ ...editForm, period: e.target.value })}
+                      className="p-2 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-300"
+                      placeholder="Período"
+                    />
+                  </div>
+
+                  <textarea
+                    rows={2}
+                    value={editForm.context || ''}
+                    onChange={(e) => setEditForm({ ...editForm, context: e.target.value })}
+                    className="w-full p-2 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-300"
+                    placeholder="Contexto histórico"
+                  />
+                  <textarea
+                    rows={2}
+                    value={editForm.analysis || ''}
+                    onChange={(e) => setEditForm({ ...editForm, analysis: e.target.value })}
+                    className="w-full p-2 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-300"
+                    placeholder="Análisis formal"
+                  />
                   <input
                     type="url"
                     value={editForm.imageUrl || ''}
@@ -143,12 +174,11 @@ export function GalleryMode({ artworks, onDeleteArtwork, onUpdateArtwork }) {
             );
           }
 
-          // 🔑 CORRECCIÓN 2: Evaluamos ambos posibles campos para renderizar la imagen
           const currentImageUrl = art.imageUrl || art.imageurl;
 
           return (
             <div key={art.id} className="bg-neutral-900 border border-neutral-800/80 rounded-3xl overflow-hidden shadow-xl flex flex-col group hover:border-neutral-700 transition">
-              {/* Imagen con badge y fallback de error */}
+              {/* Imagen con badge */}
               <div className="h-52 overflow-hidden relative bg-neutral-950">
                 <img
                   src={currentImageUrl || FALLBACK_IMAGE}
@@ -165,7 +195,7 @@ export function GalleryMode({ artworks, onDeleteArtwork, onUpdateArtwork }) {
                 </div>
               </div>
 
-              {/* Info */}
+              {/* Info y campos académicos en tarjeta normal */}
               <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                 <div>
                   <h3 className="text-lg font-extrabold text-white leading-snug">{art.title}</h3>
@@ -182,8 +212,44 @@ export function GalleryMode({ artworks, onDeleteArtwork, onUpdateArtwork }) {
                     </span>
                   </div>
 
+                  {/* CAMPOS ACADÉMICOS VISIBLES EN EL CATÁLOGO */}
+                  <div className="space-y-2 text-xs">
+                    {(art.chronology || art.period) && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {art.chronology && (
+                          <div className="bg-neutral-950 p-2 rounded-xl border border-neutral-800 text-neutral-300 truncate">
+                            <strong className="text-amber-400 block text-[10px]">Cronología:</strong> {art.chronology}
+                          </div>
+                        )}
+                        {art.period && (
+                          <div className="bg-neutral-950 p-2 rounded-xl border border-neutral-800 text-neutral-300 truncate">
+                            <strong className="text-amber-400 block text-[10px]">Período:</strong> {art.period}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {art.context && (
+                      <div className="bg-neutral-950 p-2 rounded-xl border border-neutral-800 text-neutral-400">
+                        <strong className="text-amber-400 block text-[10px] flex items-center gap-1">
+                          <Landmark size={10} /> Contexto:
+                        </strong>
+                        <p className="line-clamp-2 mt-0.5">{art.context}</p>
+                      </div>
+                    )}
+
+                    {art.analysis && (
+                      <div className="bg-neutral-950 p-2 rounded-xl border border-neutral-800 text-neutral-400">
+                        <strong className="text-amber-400 block text-[10px] flex items-center gap-1">
+                          <Glasses size={10} /> Análisis:
+                        </strong>
+                        <p className="line-clamp-2 mt-0.5">{art.analysis}</p>
+                      </div>
+                    )}
+                  </div>
+
                   {art.notes && (
-                    <p className="text-neutral-400 text-xs bg-neutral-950/50 p-3 rounded-2xl border border-neutral-800/50 line-clamp-2">
+                    <p className="text-neutral-400 text-xs bg-neutral-950/50 p-3 rounded-2xl border border-neutral-800/50 line-clamp-2 mt-2">
                       {art.notes}
                     </p>
                   )}

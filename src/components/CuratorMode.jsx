@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { PlusCircle, Image as ImageIcon, Globe, Download, Upload } from 'lucide-react';
 import { MetSearchModal } from './MetSearchModal';
 
 export function CuratorMode({ artworks, onAddArtwork }) {
   const [isMetModalOpen, setIsMetModalOpen] = useState(false);
+  const fileInputRef = useRef(null);
+
   const [formData, setFormData] = useState({
     title: '',
     artist: '',
@@ -12,6 +14,10 @@ export function CuratorMode({ artworks, onAddArtwork }) {
     location: '',
     imageUrl: '',
     notes: '',
+    chronology: '',
+    context: '',
+    analysis: '',
+    period: '',
   });
 
   const [successMsg, setSuccessMsg] = useState(false);
@@ -30,38 +36,43 @@ export function CuratorMode({ artworks, onAddArtwork }) {
       location: '',
       imageUrl: '',
       notes: '',
+      chronology: '',
+      context: '',
+      analysis: '',
+      period: '',
     });
 
     setSuccessMsg(true);
     setTimeout(() => setSuccessMsg(false), 3000);
   };
 
-  // Exportación JSON
+  // Exportar obras a JSON
   const handleExportJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(artworks, null, 2));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(artworks, null, 2));
     const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `artflash_coleccion_${Date.now()}.json`);
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "artflash_obras.json");
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
   };
 
-  // Importación JSON
+  // Importar obras desde JSON
   const handleImportJSON = (e) => {
     const fileReader = new FileReader();
-    if (e.target.files && e.target.files[0]) {
-      fileReader.readAsText(e.target.files[0], 'UTF-8');
+    if (e.target.files[0]) {
+      fileReader.readAsText(e.target.files[0], "UTF-8");
       fileReader.onload = (event) => {
         try {
-          const parsedData = JSON.parse(event.target.result);
-          if (Array.isArray(parsedData)) {
-            parsedData.forEach((art) => onAddArtwork(art));
-            setSuccessMsg(true);
-            setTimeout(() => setSuccessMsg(false), 3000);
+          const imported = JSON.parse(event.target.result);
+          if (Array.isArray(imported)) {
+            imported.forEach((art) => onAddArtwork(art));
+            alert(`¡Se han importado ${imported.length} obras con éxito!`);
+          } else {
+            alert("El archivo no tiene un formato de lista válido.");
           }
-        } catch (err) {
-          alert('El archivo cargado no tiene un formato JSON válido.');
+        } catch (error) {
+          alert("Error al leer el archivo JSON.");
         }
       };
     }
@@ -69,47 +80,44 @@ export function CuratorMode({ artworks, onAddArtwork }) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      {/* Botones de Gestión JSON */}
-      <div className="mb-6 flex justify-between items-center bg-neutral-900 border border-neutral-800 p-4 rounded-2xl text-xs">
-        <span className="text-neutral-400 font-medium">Gestión de Copia de Seguridad:</span>
-        <div className="flex gap-2">
+      
+      {/* --- BARRA SUPERIOR: IMPORTAR / EXPORTAR / MET API --- */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex items-center space-x-2">
           <button
             onClick={handleExportJSON}
-            className="px-3 py-1.5 bg-neutral-950 hover:bg-neutral-800 text-amber-400 border border-neutral-800 rounded-xl font-bold flex items-center space-x-1.5 transition"
+            className="flex items-center space-x-1.5 px-3 py-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded-xl text-xs text-neutral-300 font-medium transition"
           >
             <Download size={14} />
             <span>Exportar JSON</span>
           </button>
 
-          <label className="px-3 py-1.5 bg-neutral-950 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 rounded-xl font-bold flex items-center space-x-1.5 cursor-pointer transition">
+          <button
+            onClick={() => fileInputRef.current.click()}
+            className="flex items-center space-x-1.5 px-3 py-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded-xl text-xs text-neutral-300 font-medium transition"
+          >
             <Upload size={14} />
             <span>Importar JSON</span>
-            <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-          </label>
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportJSON}
+            accept=".json"
+            className="hidden"
+          />
         </div>
-      </div>
 
-      {/* Banner para la Búsqueda en API Externa */}
-      <div className="mb-8 p-6 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 rounded-3xl flex items-center justify-between">
-        <div>
-          <h3 className="text-white font-bold text-base flex items-center space-x-2">
-            <Globe className="text-amber-400" size={18} />
-            <span>¿Buscas una obra famosa?</span>
-          </h3>
-          <p className="text-neutral-400 text-xs mt-1">
-            Importa automáticamente datos e imágenes desde la colección del Met Museum.
-          </p>
-        </div>
         <button
-          type="button"
           onClick={() => setIsMetModalOpen(true)}
-          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-extrabold rounded-xl transition shrink-0"
+          className="flex items-center space-x-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition shadow-sm"
         >
-          BUSCAR EN API
+          <Globe size={14} />
+          <span>Buscar en el MET Museum</span>
         </button>
       </div>
 
-      {/* Formulario de Entrada Manual */}
+      {/* --- FORMULARIO DE CREACIÓN DE FICHAS TÉCNICAS --- */}
       <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
         <div className="flex items-center space-x-3 mb-6">
           <div className="p-3 bg-amber-500/20 text-amber-400 rounded-2xl border border-amber-500/30">
@@ -118,14 +126,14 @@ export function CuratorMode({ artworks, onAddArtwork }) {
           <div>
             <h2 className="text-xl font-bold text-white">Curador de Obras</h2>
             <p className="text-neutral-400 text-xs">
-              Añade nuevas fichas técnicas para los exámenes de tus alumnos.
+              Añade fichas técnicas avanzadas para exámenes de Historia del Arte.
             </p>
           </div>
         </div>
 
         {successMsg && (
           <div className="mb-6 p-4 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-sm rounded-xl text-center font-medium">
-            ¡Operación realizada correctamente!
+            ¡Obra guardada correctamente!
           </div>
         )}
 
@@ -138,7 +146,7 @@ export function CuratorMode({ artworks, onAddArtwork }) {
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Ej. Guernica"
+                placeholder="Ej. Las Meninas"
                 className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
               />
             </div>
@@ -149,7 +157,7 @@ export function CuratorMode({ artworks, onAddArtwork }) {
                 required
                 value={formData.artist}
                 onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
-                placeholder="Ej. Pablo Picasso"
+                placeholder="Ej. Diego Velázquez"
                 className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
               />
             </div>
@@ -157,12 +165,12 @@ export function CuratorMode({ artworks, onAddArtwork }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-neutral-400 mb-1">Año / Período</label>
+              <label className="block text-xs font-semibold text-neutral-400 mb-1">Año / Fecha</label>
               <input
                 type="text"
                 value={formData.year}
                 onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                placeholder="Ej. 1937"
+                placeholder="Ej. 1656"
                 className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
               />
             </div>
@@ -172,7 +180,7 @@ export function CuratorMode({ artworks, onAddArtwork }) {
                 type="text"
                 value={formData.style}
                 onChange={(e) => setFormData({ ...formData, style: e.target.value })}
-                placeholder="Ej. Cubismo"
+                placeholder="Ej. Barroco"
                 className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
               />
             </div>
@@ -182,10 +190,56 @@ export function CuratorMode({ artworks, onAddArtwork }) {
                 type="text"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Ej. Museo Reina Sofía"
+                placeholder="Ej. Museo del Prado"
                 className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
               />
             </div>
+          </div>
+
+          {/* CAMPOS ACADÉMICOS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-neutral-800 pt-4">
+            <div>
+              <label className="block text-xs font-semibold text-neutral-400 mb-1">Cronología / Siglo</label>
+              <input
+                type="text"
+                value={formData.chronology}
+                onChange={(e) => setFormData({ ...formData, chronology: e.target.value })}
+                placeholder="Ej. Siglo XVII (Pleno Barroco)"
+                className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-neutral-400 mb-1">Período / Escuela</label>
+              <input
+                type="text"
+                value={formData.period}
+                onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+                placeholder="Ej. Escuela Española"
+                className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-neutral-400 mb-1">Contexto Histórico y Cultural</label>
+            <textarea
+              rows={2}
+              value={formData.context}
+              onChange={(e) => setFormData({ ...formData, context: e.target.value })}
+              placeholder="Contexto en el que se encuadra la obra..."
+              className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-neutral-400 mb-1">Análisis Formal e Iconográfico</label>
+            <textarea
+              rows={3}
+              value={formData.analysis}
+              onChange={(e) => setFormData({ ...formData, analysis: e.target.value })}
+              placeholder="Composición, luz tenebrista, perspectiva aérea, simbolismo..."
+              className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
+            />
           </div>
 
           <div>
@@ -197,19 +251,19 @@ export function CuratorMode({ artworks, onAddArtwork }) {
                 required
                 value={formData.imageUrl}
                 onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                placeholder="https://images.unsplash.com/..."
+                placeholder="https://..."
                 className="w-full pl-10 pr-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-neutral-400 mb-1">Notas Contextuales para el Examen</label>
+            <label className="block text-xs font-semibold text-neutral-400 mb-1">Notas Rápidas o Apuntes</label>
             <textarea
-              rows={3}
+              rows={2}
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Detalles clave para el examen (composición, uso de luz, contexto histórico...)"
+              placeholder="Notas clave de repaso..."
               className="w-full px-4 py-2.5 bg-neutral-950 border border-neutral-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500"
             />
           </div>
@@ -218,12 +272,11 @@ export function CuratorMode({ artworks, onAddArtwork }) {
             type="submit"
             className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold rounded-xl transition shadow-lg mt-2"
           >
-            Guardar Obra en el Catálogo
+            Guardar Ficha Técnica Completa
           </button>
         </form>
       </div>
 
-      {/* Modal de Búsqueda Externa */}
       <MetSearchModal
         isOpen={isMetModalOpen}
         onClose={() => setIsMetModalOpen(false)}
