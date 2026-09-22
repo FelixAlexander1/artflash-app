@@ -21,9 +21,13 @@ export function GalleryMode({ artworks, onDeleteArtwork, onUpdateArtwork }) {
     return matchesSearch && matchesStyle;
   });
 
+  // 🔑 CORRECCIÓN 1: Aseguramos que imageUrl se inicialice leyendo ambas variantes
   const handleStartEdit = (art) => {
     setEditingId(art.id);
-    setEditForm({ ...art });
+    setEditForm({
+      ...art,
+      imageUrl: art.imageUrl || art.imageurl || ''
+    });
   };
 
   const handleSaveEdit = () => {
@@ -139,15 +143,18 @@ export function GalleryMode({ artworks, onDeleteArtwork, onUpdateArtwork }) {
             );
           }
 
+          // 🔑 CORRECCIÓN 2: Evaluamos ambos posibles campos para renderizar la imagen
+          const currentImageUrl = art.imageUrl || art.imageurl;
+
           return (
             <div key={art.id} className="bg-neutral-900 border border-neutral-800/80 rounded-3xl overflow-hidden shadow-xl flex flex-col group hover:border-neutral-700 transition">
               {/* Imagen con badge y fallback de error */}
               <div className="h-52 overflow-hidden relative bg-neutral-950">
                 <img
-                  src={art.imageUrl || FALLBACK_IMAGE}
+                  src={currentImageUrl || FALLBACK_IMAGE}
                   alt={art.title}
                   onError={(e) => {
-                    e.target.onerror = null; // Previene bucles infinitos
+                    e.target.onerror = null;
                     e.target.src = FALLBACK_IMAGE;
                   }}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-500"

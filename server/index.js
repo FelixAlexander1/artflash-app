@@ -114,7 +114,9 @@ app.post('/api/artworks', verifyTeacher, async (req, res) => {
 // PUT: Actualizar una obra por ID (Protegida)
 app.put('/api/artworks/:id', verifyTeacher, async (req, res) => {
   const { id } = req.params;
-  const { title, artist, year, style, location, imageUrl, notes } = req.body;
+  // Extraemos imageUrl o imageurl por si se envía con diferente nombre desde el cliente:
+  const { title, artist, year, style, location, notes } = req.body;
+  const imageUrl = req.body.imageUrl || req.body.imageurl;
 
   try {
     const query = `
