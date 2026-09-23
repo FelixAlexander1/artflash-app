@@ -3,6 +3,10 @@ import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import db from './database.js';
+import { GoogleGenAI } from '@google/genai';
+
+// Inicializar el SDK de Gemini (usará process.env.GEMINI_API_KEY automáticamente)
+const ai = new GoogleGenAI();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -136,7 +140,6 @@ app.delete('/api/artworks/:id', verifyTeacher, async (req, res) => {
 });
 
 // GET: Buscar obras en la API pública del MET Museum
-// GET: Buscar obras en la API pública del MET Museum
 app.get('/api/external/search', async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Debes proporcionar un término de búsqueda' });
@@ -168,7 +171,6 @@ app.get('/api/external/search', async (req, res) => {
         location: item.repository || 'The Met, Nueva York',
         imageUrl: item.primaryImageSmall || item.primaryImage,
         notes: `Obra perteneciente al departamento de ${item.department}.`,
-        // CAMPOS NUEVOS AÑADIDOS PARA EVITAR EL ERROR:
         chronology: item.objectDate || '',
         period: item.period || '',
         context: item.culture ? `Cultura / Contexto: ${item.culture}` : 'Sin contexto especificado.',
@@ -186,7 +188,75 @@ app.get('/api/external/search', async (req, res) => {
   }
 });
 
-// --- 5. INICIAR SERVIDOR ---
+// --- 5. RUTAS DE IA Y EXÁMENES ---
+
+// POST: Generar análisis académico automático con IA
+app.post('/api/ai/analyze-artwork', async (req, res) => {
+  const { title, artist } = req.body;
+
+  if (!title || !artist) {
+    return res.status(400).json({ error: 'Se requiere el título y el artista para realizar el análisis.' });
+  }
+
+  try {
+    const prompt = `Actúa como un catedrático experto en Historia del Arte. Analiza la obra de arte titulada "${title}" del artista "${artist}".
+    Devuelve la información estrictamente en formato JSON válido con las siguientes claves (sin bloques de código markdown alrededor, solo el JSON puro):
+    {
+      "year": "Año o fecha aproximada de creación (ej. 1656)",
+      "style": "Estilo o movimiento artístico principal (ej. Barroco)",
+      "location": "Museo o ubicación actual principal (ej. Museo del Prado, Madrid)",
+      "chronology": "Siglo o fecha aproximada detallada (ej. Siglo XVII)",
+      "period": "Estilo, movimiento o escuela artística (ej. Barroco / Escuela Española)",
+      "context": "Breve contexto histórico de la época en 2 o 3 frases",
+      "analysis": "Breve análisis formal e iconográfico (composición, luz, técnica) en 2 o 3 frases",
+    }`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.6-flash',
+      contents: prompt,
+    });
+
+    let textResponse = response.text.trim();
+    textResponse = textResponse.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
+
+    const analysisData = JSON.parse(textResponse);
+    res.json(analysisData);
+  } catch (err) {
+    console.error('Error al generar análisis con IA:', err);
+    res.status(500).json({ error: 'No se pudo generar el análisis automático con IA.' });
+  }
+});
+
+// POST: Guardar resultado de un examen
+app.post('/api/exam-results', async (req, res) => {
+  const { user_name, score, total } = req.body;
+  const percentage = ((score / total) * 100).toFixed(2);
+
+  try {
+    const result = await db.query(
+      `INSERT INTO exam_results (user_name, score, total, percentage)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [user_name || 'Estudiante', score, total, percentage]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al guardar resultado de examen:', err);
+    res.status(500).json({ error: 'Error al guardar el resultado' });
+  }
+});
+
+// GET: Obtener historial de resultados
+app.get('/api/exam-results', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM exam_results ORDER BY created_at DESC LIMIT 10');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener resultados:', err);
+    res.status(500).json({ error: 'Error al obtener el historial' });
+  }
+});
+
+// --- 6. INICIAR SERVIDOR ---
 app.listen(PORT, () => {
   console.log(`Servidor API corriendo en http://localhost:${PORT}`);
 });

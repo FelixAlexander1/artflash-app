@@ -1,13 +1,24 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, RotateCw, MapPin, Calendar, BookOpen, Sparkles, Landmark, Glasses } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCw, MapPin, Calendar, BookOpen, Sparkles, Landmark, Glasses, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 
 export function FlashcardMode({ artworks }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  
+  // Estado para llevar un registro opcional de cómo va el alumno con cada tarjeta
+  const [cardStats, setCardStats] = useState({});
 
   const currentArtwork = artworks?.[currentIndex];
 
-  const handleNext = () => {
+  const handleNext = (rating) => {
+    // Aquí puedes registrar el feedback de repetición espaciada si lo deseas
+    if (rating && currentArtwork) {
+      setCardStats(prev => ({
+        ...prev,
+        [currentArtwork.id || currentIndex]: rating
+      }));
+    }
+
     setIsFlipped(false);
     setCurrentIndex((prev) => (prev + 1) % artworks.length);
   };
@@ -42,8 +53,8 @@ export function FlashcardMode({ artworks }) {
         <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-3xl blur-xl opacity-50 group-hover:opacity-80 transition duration-500"></div>
 
         <div
-          onClick={() => setIsFlipped(!isFlipped)}
-          className="cursor-pointer relative h-[540px] w-full rounded-3xl transition-all duration-300 shadow-2xl overflow-hidden border border-neutral-800 bg-neutral-900 flex flex-col"
+          onClick={() => !isFlipped && setIsFlipped(true)}
+          className={`relative h-[540px] w-full rounded-3xl transition-all duration-300 shadow-2xl overflow-hidden border border-neutral-800 bg-neutral-900 flex flex-col ${!isFlipped ? 'cursor-pointer' : ''}`}
         >
           {!isFlipped ? (
             /* --- CARA FRONTAL --- */
@@ -73,34 +84,37 @@ export function FlashcardMode({ artworks }) {
             </div>
           ) : (
             /* --- CARA TRASERA (Ficha técnica completa) --- */
-            <div className="h-full w-full p-5 sm:p-6 bg-neutral-900/95 backdrop-blur-xl text-neutral-100 flex flex-col justify-between border border-amber-500/30 overflow-y-auto">
-              <div className="space-y-4">
-                <div className="flex justify-between items-start border-b border-neutral-800 pb-3">
+            <div className="h-full w-full p-4 sm:p-5 bg-neutral-900/95 backdrop-blur-xl text-neutral-100 flex flex-col justify-between border border-amber-500/30 overflow-y-auto custom-scrollbar">
+              <div className="space-y-3">
+                <div className="flex justify-between items-start border-b border-neutral-800 pb-2.5">
                   <div>
                     <span className="text-[10px] text-amber-400 font-extrabold tracking-widest uppercase">
                       Ficha Técnica de Examen
                     </span>
-                    <h3 className="text-xl font-bold text-white mt-0.5">{currentArtwork.title}</h3>
+                    <h3 className="text-lg font-bold text-white mt-0.5">{currentArtwork.title}</h3>
                     <p className="text-neutral-400 text-xs font-medium">{currentArtwork.artist}</p>
                   </div>
-                  <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20 shrink-0">
-                    <RotateCw size={16} />
-                  </div>
+                  <button 
+                    onClick={() => setIsFlipped(false)}
+                    className="p-1.5 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20 shrink-0 hover:bg-amber-500/20 transition-colors"
+                  >
+                    <RotateCw size={14} />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-neutral-950/60 p-2.5 rounded-2xl border border-neutral-800 flex items-center space-x-2">
-                    <Calendar size={15} className="text-amber-400 shrink-0" />
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="bg-neutral-950/60 p-2 rounded-xl border border-neutral-800 flex items-center space-x-2">
+                    <Calendar size={14} className="text-amber-400 shrink-0" />
                     <div>
-                      <span className="text-[10px] text-neutral-500 block">Año</span>
+                      <span className="text-[9px] text-neutral-500 block">Año</span>
                       <span className="text-xs font-semibold text-neutral-200">{currentArtwork.year || 'N/A'}</span>
                     </div>
                   </div>
 
-                  <div className="bg-neutral-950/60 p-2.5 rounded-2xl border border-neutral-800 flex items-center space-x-2">
-                    <MapPin size={15} className="text-amber-400 shrink-0" />
+                  <div className="bg-neutral-950/60 p-2 rounded-xl border border-neutral-800 flex items-center space-x-2">
+                    <MapPin size={14} className="text-amber-400 shrink-0" />
                     <div>
-                      <span className="text-[10px] text-neutral-500 block">Ubicación</span>
+                      <span className="text-[9px] text-neutral-500 block">Ubicación</span>
                       <span className="text-xs font-semibold text-neutral-200 truncate block max-w-[110px]">
                         {currentArtwork.location || 'N/A'}
                       </span>
@@ -108,55 +122,73 @@ export function FlashcardMode({ artworks }) {
                   </div>
                 </div>
 
-                {/* Bloque de nuevos campos académicos */}
-                <div className="space-y-2.5 text-xs text-neutral-300">
+                {/* Bloque de campos académicos compactos */}
+                <div className="space-y-2 text-[11px] text-neutral-300">
                   {currentArtwork.chronology && (
-                    <div className="bg-neutral-950/80 p-2.5 rounded-xl border border-neutral-800">
-                      <span className="text-amber-400 font-bold block text-[11px] mb-0.5">Cronología / Siglo:</span>
-                      <p className="text-neutral-300">{currentArtwork.chronology}</p>
+                    <div className="bg-neutral-950/80 p-2 rounded-lg border border-neutral-800/80">
+                      <span className="text-amber-400 font-bold block text-[10px] mb-0.5">Cronología / Siglo:</span>
+                      <p className="text-neutral-300 leading-snug">{currentArtwork.chronology}</p>
                     </div>
                   )}
 
                   {currentArtwork.period && (
-                    <div className="bg-neutral-950/80 p-2.5 rounded-xl border border-neutral-800">
-                      <span className="text-amber-400 font-bold block text-[11px] mb-0.5">Período / Escuela:</span>
-                      <p className="text-neutral-300">{currentArtwork.period}</p>
+                    <div className="bg-neutral-950/80 p-2 rounded-lg border border-neutral-800/80">
+                      <span className="text-amber-400 font-bold block text-[10px] mb-0.5">Período / Escuela:</span>
+                      <p className="text-neutral-300 leading-snug">{currentArtwork.period}</p>
                     </div>
                   )}
 
                   {currentArtwork.context && (
-                    <div className="bg-neutral-950/80 p-2.5 rounded-xl border border-neutral-800">
-                      <span className="text-amber-400 font-bold block text-[11px] mb-0.5"><Landmark size={12} className="inline mr-1" />Contexto Histórico:</span>
+                    <div className="bg-neutral-950/80 p-2 rounded-lg border border-neutral-800/80">
+                      <span className="text-amber-400 font-bold block text-[10px] mb-0.5"><Landmark size={11} className="inline mr-1" />Contexto Histórico:</span>
                       <p className="text-neutral-400 leading-relaxed">{currentArtwork.context}</p>
                     </div>
                   )}
 
                   {currentArtwork.analysis && (
-                    <div className="bg-neutral-950/80 p-2.5 rounded-xl border border-neutral-800">
-                      <span className="text-amber-400 font-bold block text-[11px] mb-0.5"><Glasses size={12} className="inline mr-1" />Análisis Formal:</span>
+                    <div className="bg-neutral-950/80 p-2 rounded-lg border border-neutral-800/80">
+                      <span className="text-amber-400 font-bold block text-[10px] mb-0.5"><Glasses size={11} className="inline mr-1" />Análisis Formal:</span>
                       <p className="text-neutral-400 leading-relaxed">{currentArtwork.analysis}</p>
                     </div>
                   )}
-
-                  <div className="bg-neutral-950/80 p-2.5 rounded-xl border border-neutral-800">
-                    <div className="flex items-center space-x-1 text-[11px] font-bold text-amber-400 mb-0.5">
-                      <BookOpen size={12} />
-                      <span>Claves Rápidas</span>
-                    </div>
-                    <p className="text-neutral-300">{cardNotes}</p>
-                  </div>
                 </div>
               </div>
 
-              <div className="text-center text-[11px] text-neutral-500 font-medium pt-3 mt-2 border-t border-neutral-800">
-                Haz clic de nuevo para ver la imagen
+              {/* Botones de Autoevaluación (Repetición Espaciada) */}
+              <div className="pt-2.5 mt-2.5 border-t border-neutral-800">
+                <span className="text-[9px] uppercase tracking-wider text-neutral-400 font-bold block text-center mb-1.5">
+                  ¿Cómo llevabas esta obra?
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => handleNext('hard')}
+                    className="py-1.5 px-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1"
+                  >
+                    <XCircle size={13} />
+                    <span>Fallé</span>
+                  </button>
+                  <button
+                    onClick={() => handleNext('medium')}
+                    className="py-1.5 px-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1"
+                  >
+                    <AlertCircle size={13} />
+                    <span>Costó</span>
+                  </button>
+                  <button
+                    onClick={() => handleNext('easy')}
+                    className="py-1.5 px-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1"
+                  >
+                    <CheckCircle2 size={13} />
+                    <span>Fácil</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Botones de Navegación */}
+      {/* Botones de Navegación Básica inferiores */}
       <div className="flex items-center justify-between mt-6">
         <button
           onClick={handlePrev}
@@ -170,11 +202,11 @@ export function FlashcardMode({ artworks }) {
           className="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-neutral-950 font-extrabold rounded-2xl transition-all active:scale-95 flex items-center space-x-2 text-xs tracking-wide shadow-lg shadow-amber-500/20"
         >
           <RotateCw size={16} />
-          <span>GIRAR TARJETA</span>
+          <span>{isFlipped ? 'VER IMAGEN' : 'GIRAR TARJETA'}</span>
         </button>
 
         <button
-          onClick={handleNext}
+          onClick={() => handleNext(null)}
           className="p-3.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 rounded-2xl text-white transition-all active:scale-95 shadow-lg"
         >
           <ChevronRight size={20} />

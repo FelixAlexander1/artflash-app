@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
-export function QuizMode({ artworks, onClose }) {
+export function QuizMode({ artworks, onClose, sessionUser }) { // 👈 Añadimos sessionUser aquí
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   
-  // Guardamos el historial de IDs de obras ya utilizadas en los test
   const [usedArtworkIds, setUsedArtworkIds] = useState([]);
 
   const FALLBACK_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="100%" height="100%" fill="%23171717"/><text x="50%" y="50%" fill="%23f59e0b" font-family="sans-serif" font-size="20" text-anchor="middle">Obra de Arte</text></svg>';
@@ -35,16 +34,14 @@ export function QuizMode({ artworks, onClose }) {
     }
 
     const shuffledAvailable = shuffleArray(availableArtworks);
-    const selectedForQuiz = shuffledAvailable.slice(0, 5); // Tomamos máximo 5 obras
+    const selectedForQuiz = shuffledAvailable.slice(0, 5);
 
     const newUsedIds = selectedForQuiz.map((a) => a.id);
     setUsedArtworkIds((prev) => [...prev, ...newUsedIds]);
 
     const generatedQuestions = selectedForQuiz.map((artwork) => {
-      // Tipos de preguntas estándar y académicas avanzadas
       const baseTypes = ['artist', 'year', 'style', 'location'];
       
-      // Añadimos tipos académicos solo si la obra tiene información en dichos campos
       if (artwork.chronology) baseTypes.push('chronology');
       if (artwork.period) baseTypes.push('period');
       if (artwork.context) baseTypes.push('context');
@@ -115,8 +112,10 @@ export function QuizMode({ artworks, onClose }) {
   }, [artworks]);
 
   const handleNextQuestion = () => {
+    let newScore = score;
     if (selectedOption === questions[currentQuestionIndex].answer) {
-      setScore(score + 1);
+      newScore = score + 1;
+      setScore(newScore);
     }
     setSelectedOption(null);
 
@@ -124,6 +123,24 @@ export function QuizMode({ artworks, onClose }) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
       setShowResult(true);
+      saveExamResult(newScore, questions.length);
+    }
+  };
+
+  const saveExamResult = async (finalScore, totalQuestions) => {
+    try {
+      await fetch('/api/exam-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_name: sessionUser?.name || 'Anónimo',    // 👈 Usamos la prop de sesión
+          group_code: sessionUser?.group || 'GENERAL',     // 👈 Usamos el grupo de sesión
+          score: finalScore,
+          total: totalQuestions,
+        }),
+      });
+    } catch (err) {
+      console.error('Error al guardar resultado:', err);
     }
   };
 
@@ -240,121 +257,39 @@ export function QuizMode({ artworks, onClose }) {
 
 const styles = {
   overlay: {
-    position: 'fixed',
-    inset: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    backdropFilter: 'blur(4px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    padding: '1rem',
+    position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', zIndex: 1000, padding: '1rem',
   },
   card: {
-    position: 'relative',
-    backgroundColor: '#18181b',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: '#27272a',
-    borderRadius: '16px',
-    padding: '2rem',
-    maxWidth: '550px',
-    width: '100%',
+    position: 'relative', backgroundColor: '#18181b', borderWidth: '1px',
+    borderStyle: 'solid', borderColor: '#27272a', borderRadius: '16px',
+    padding: '2rem', maxWidth: '550px', width: '100%',
     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
   },
   closeBtn: {
-    position: 'absolute',
-    top: '1.25rem',
-    right: '1.25rem',
-    background: '#27272a',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: '#3f3f46',
-    borderRadius: '50%',
-    width: '36px',
-    height: '36px',
-    color: '#ffffff',
-    fontSize: '1rem',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
+    position: 'absolute', top: '1.25rem', right: '1.25rem', background: '#27272a',
+    borderWidth: '1px', borderStyle: 'solid', borderColor: '#3f3f46', borderRadius: '50%',
+    width: '36px', height: '36px', color: '#ffffff', fontSize: '1rem', fontWeight: 'bold',
+    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10,
   },
   badge: {
-    display: 'inline-block',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    color: '#f59e0b',
-    fontSize: '0.85rem',
-    fontWeight: '600',
-    padding: '4px 12px',
-    borderRadius: '9999px',
+    display: 'inline-block', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b',
+    fontSize: '0.85rem', fontWeight: '600', padding: '4px 12px', borderRadius: '9999px',
   },
   imageContainer: {
-    width: '100%',
-    height: '220px',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    marginBottom: '1.25rem',
-    backgroundColor: '#09090b',
+    width: '100%', height: '220px', borderRadius: '12px', overflow: 'hidden',
+    marginBottom: '1.25rem', backgroundColor: '#09090b',
   },
-  image: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'contain',
-  },
-  questionText: {
-    fontSize: '1.15rem',
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: '1.25rem',
-    lineHeight: '1.4',
-  },
-  optionsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '0.75rem',
-    marginBottom: '1.5rem',
-  },
+  image: { width: '100%', height: '100%', objectFit: 'contain' },
+  questionText: { fontSize: '1.15rem', fontWeight: '600', color: '#ffffff', marginBottom: '1.25rem', lineHeight: '1.4' },
+  optionsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' },
   optionBtn: {
-    padding: '0.75rem 1rem',
-    backgroundColor: '#27272a',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: '#3f3f46',
-    borderRadius: '8px',
-    color: '#e4e4e7',
-    textAlign: 'left',
-    fontSize: '0.95rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    padding: '0.75rem 1rem', backgroundColor: '#27272a', borderWidth: '1px',
+    borderStyle: 'solid', borderColor: '#3f3f46', borderRadius: '8px', color: '#e4e4e7',
+    textAlign: 'left', fontSize: '0.95rem', cursor: 'pointer', transition: 'all 0.2s ease',
   },
-  optionBtnSelected: {
-    backgroundColor: '#f59e0b',
-    borderColor: '#f59e0b',
-    color: '#000000',
-    fontWeight: 'bold',
-  },
-  primaryBtn: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#f59e0b',
-    border: 'none',
-    borderRadius: '8px',
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: '1rem',
-  },
-  secondaryBtn: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#27272a',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: '#3f3f46',
-    borderRadius: '8px',
-    color: '#fff',
-    fontWeight: '600',
-    cursor: 'pointer',
-    flex: 1,
-  },
+  optionBtnSelected: { backgroundColor: '#f59e0b', borderColor: '#f59e0b', color: '#000000', fontWeight: 'bold' },
+  primaryBtn: { padding: '0.75rem 1.5rem', backgroundColor: '#f59e0b', border: 'none', borderRadius: '8px', color: '#000', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' },
+  secondaryBtn: { padding: '0.75rem 1.5rem', backgroundColor: '#27272a', borderWidth: '1px', borderStyle: 'solid', borderColor: '#3f3f46', borderRadius: '8px', color: '#fff', fontWeight: '600', cursor: 'pointer', flex: 1 },
 };

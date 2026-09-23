@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { FlashcardMode } from './components/FlashcardMode';
 import { QuizMode } from './components/QuizMode';
 import { GalleryMode } from './components/GalleryMode';
 import { CuratorMode } from './components/CuratorMode';
+import { ComparisonMode } from './components/ComparisonMode';
+import { SessionModal } from './components/SessionModal'; // 👈 Importamos el componente de sesión rápido
 
-// Usamos la variable de entorno de Vercel y mantenemos una URL relativa segura como respaldo
 const API_URL = import.meta.env.VITE_API_URL || 'https://artflash-backend.onrender.com/api/artworks';
 
 export default function App() {
@@ -15,24 +16,13 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. Restaurar la sesión almacenada en localStorage al cargar la app
-  useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
+  // 🔑 Estado para la sesión Kahoot rápida (Alumno o Profesor)
+  const [sessionUser, setSessionUser] = useState(() => {
+    const saved = sessionStorage.getItem('artflash_session');
+    return saved ? JSON.parse(saved) : null;
+  });
 
-    if (savedToken && savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        setRole(parsedUser.role || 'student');
-      } catch (e) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
-    }
-  }, []);
-
-  // 2. Cargar obras desde la API normalizando la propiedad imageUrl
+  // 1. Cargar obras desde la API
   useEffect(() => {
     fetch(API_URL)
       .then((res) => {
@@ -40,7 +30,6 @@ export default function App() {
         return res.json();
       })
       .then((data) => {
-        // 🔑 NORMALIZACIÓN: Aseguramos que la imagen se lea aunque PostgreSQL la devuelva como 'imageurl'
         const normalizedData = data.map((art) => ({
           ...art,
           imageUrl: art.imageUrl || art.imageurl
@@ -55,7 +44,17 @@ export default function App() {
       });
   }, []);
 
-  // Helper para adjuntar el token JWT en las peticiones que requieren permisos
+  const handleLoginSession = (sessionData) => {
+    setSessionUser(sessionData);
+    sessionStorage.setItem('artflash_session', JSON.stringify(sessionData));
+    if (sessionData.role === 'teacher') {
+      setRole('teacher');
+      setActiveTab('gallery'); // Lleva al profesor directamente a gestionar
+    } else {
+      setRole('student');
+    }
+  };
+
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
     return {
@@ -64,7 +63,6 @@ export default function App() {
     };
   };
 
-  // Redirigir al alumno fuera de vistas restringidas
   const handleRoleChange = (newRole) => {
     setRole(newRole);
     if (newRole === 'student' && (activeTab === 'curator' || activeTab === 'gallery')) {
@@ -72,38 +70,28 @@ export default function App() {
     }
   };
 
-  // Agregar obra (POST)
   const handleAddArtwork = async (newArtwork) => {
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: getAuthHeaders(), // 👈 Reutilizamos el helper de autenticación
+        headers: getAuthHeaders(),
         body: JSON.stringify(newArtwork)
       });
 
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          alert('Sesión expirada o no autorizada. Por favor, vuelve a iniciar sesión.');
-        }
-        throw new Error('Error al guardar la obra');
-      }
+      if (!response.ok) throw new Error('Error al guardar la obra');
 
       const savedArtwork = await response.json();
-      
-      // Normalizamos la obra guardada antes de añadirla al estado local
       const normalizedArtwork = {
         ...savedArtwork,
         imageUrl: savedArtwork.imageUrl || savedArtwork.imageurl
       };
 
       setArtworks((prev) => [normalizedArtwork, ...prev]);
-
     } catch (error) {
       console.error('Error:', error);
     }
   };
 
-  // Actualizar obra (PUT)
   const handleUpdateArtwork = async (updatedArtwork) => {
     try {
       const res = await fetch(`${API_URL}/${updatedArtwork.id}`, {
@@ -116,15 +104,12 @@ export default function App() {
         setArtworks((prev) =>
           prev.map((item) => (item.id === updatedArtwork.id ? updatedArtwork : item))
         );
-      } else {
-        alert('No tienes autorización para modificar esta obra');
       }
     } catch (err) {
       console.error('Error al actualizar la obra:', err);
     }
   };
 
-  // Eliminar obra (DELETE)
   const handleDeleteArtwork = async (id) => {
     try {
       const res = await fetch(`${API_URL}/${id}`, {
@@ -134,8 +119,6 @@ export default function App() {
 
       if (res.ok) {
         setArtworks((prev) => prev.filter((item) => item.id !== id));
-      } else {
-        alert('No tienes autorización para eliminar obras');
       }
     } catch (err) {
       console.error('Error al eliminar la obra:', err);
@@ -151,6 +134,11 @@ export default function App() {
         </p>
       </div>
     );
+  }
+
+  // 🔑 Si no ha iniciado sesión con el modal rápido de clase, se muestra primero
+  if (!sessionUser) {
+    return <SessionModal onLogin={handleLoginSession} />;
   }
 
   return (
@@ -171,10 +159,12 @@ export default function App() {
           <QuizMode
             artworks={artworks}
             onClose={() => setActiveTab('flashcards')}
+            sessionUser={sessionUser} // 👈 Pasamos el usuario activo al Quiz
           />
         )}
+        
+        {activeTab === 'comparison' && <ComparisonMode artworks={artworks} />}
 
-        {/* El Catálogo solo es visible para profesores */}
         {activeTab === 'gallery' && role === 'teacher' && (
           <GalleryMode
             artworks={artworks}
@@ -184,7 +174,6 @@ export default function App() {
           />
         )}
 
-        {/* El Curador solo es visible para profesores */}
         {activeTab === 'curator' && role === 'teacher' && (
           <CuratorMode artworks={artworks} onAddArtwork={handleAddArtwork} />
         )}

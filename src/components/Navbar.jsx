@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { Layers, HelpCircle, LayoutGrid, PlusCircle, Sparkles, GraduationCap, Shield, UserCheck, X, LogOut } from 'lucide-react';
-
+import { Layers, HelpCircle, LayoutGrid, PlusCircle, Sparkles, GraduationCap, Shield, UserCheck, X, LogOut, Columns2 } from 'lucide-react';
 export function Navbar({ activeTab, setActiveTab, role, setRole, user, setUser }) {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const allNavItems = [
-  { id: 'flashcards', label: 'Tarjetas', icon: Layers },
-  { id: 'quiz', label: 'Examen Quiz', icon: HelpCircle },
-  { id: 'gallery', label: 'Catálogo', icon: LayoutGrid, teacherOnly: true }, 
-  { id: 'curator', label: 'Curador (+)', icon: PlusCircle, teacherOnly: true },
-];
+const allNavItems = [
+    { id: 'flashcards', label: 'Tarjetas', icon: Layers },
+    { id: 'quiz', label: 'Examen Quiz', icon: HelpCircle },
+    { id: 'comparison', label: 'Comparativa', icon: Columns2 }, 
+    { id: 'gallery', label: 'Catálogo', icon: LayoutGrid, teacherOnly: true }, 
+    { id: 'curator', label: 'Curador (+)', icon: PlusCircle, teacherOnly: true },
+  ];
 
   const navItems = allNavItems.filter((item) => !item.teacherOnly || role === 'teacher');
 
@@ -94,7 +94,9 @@ export function Navbar({ activeTab, setActiveTab, role, setRole, user, setUser }
                   <Icon size={16} />
                   <span className="hidden sm:inline">{item.label}</span>
                 </button>
+                
               );
+              
             })}
           </nav>
 

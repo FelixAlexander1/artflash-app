@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
-import { PlusCircle, Image as ImageIcon, Globe, Download, Upload } from 'lucide-react';
+import { PlusCircle, Image as ImageIcon, Globe, Download, Upload, Sparkles } from 'lucide-react';
 import { MetSearchModal } from './MetSearchModal';
 
 export function CuratorMode({ artworks, onAddArtwork }) {
   const [isMetModalOpen, setIsMetModalOpen] = useState(false);
+  const [isLoadingAI, setIsLoadingAI] = useState(false); // 🔑 Estado añadido para la carga de la IA
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -78,6 +79,44 @@ export function CuratorMode({ artworks, onAddArtwork }) {
     }
   };
 
+const handleGenerateWithAI = async () => {
+    if (!formData.title || !formData.artist) {
+      alert('Por favor, introduce al menos el Título y el Artista para que la IA pueda analizarlos.');
+      return;
+    }
+
+    setIsLoadingAI(true);
+    try {
+      // 🔑 Añadimos el puerto completo del backend http://localhost:3001
+      const response = await fetch('http://localhost:3001/api/ai/analyze-artwork', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: formData.title, artist: formData.artist }),
+      });
+
+      if (!response.ok) throw new Error('Error en el servidor de IA');
+
+      const data = await response.json();
+      
+      // Rellenamos el formulario automáticamente con lo que devolvió Gemini
+      setFormData((prev) => ({
+        ...prev,
+        year: data.year || prev.year,
+        style: data.style || prev.style,
+        location: data.location || prev.location,
+        chronology: data.chronology || prev.chronology,
+        period: data.period || prev.period,
+        context: data.context || prev.context,
+        analysis: data.analysis || prev.analysis,
+      }));
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error al generar el análisis automático.');
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       
@@ -108,13 +147,24 @@ export function CuratorMode({ artworks, onAddArtwork }) {
           />
         </div>
 
-        <button
-          onClick={() => setIsMetModalOpen(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition shadow-sm"
-        >
-          <Globe size={14} />
-          <span>Buscar en el MET Museum</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsMetModalOpen(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition shadow-sm"
+          >
+            <Globe size={14} />
+            <span>Buscar en el MET</span>
+          </button>
+          
+          <button
+            onClick={handleGenerateWithAI}
+            disabled={isLoadingAI}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50"
+          >
+            <Sparkles size={14} />
+            <span>{isLoadingAI ? 'Analizando...' : 'Generar con IA'}</span>
+          </button>
+        </div>
       </div>
 
       {/* --- FORMULARIO DE CREACIÓN DE FICHAS TÉCNICAS --- */}
